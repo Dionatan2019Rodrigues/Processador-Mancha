@@ -1,0 +1,26 @@
+# Diretórios de binários / executáveis gerados
+bin/
+build/
+dist/
+
+# Arquivos de código de máquina e objetos gerados pelo simulador mancha e compiladores
+*.mob
+*.o
+*.obj
+*.out
+*.exe
+*.elf
+
+# Arquivos temporários de log 
+*.log
+*.tmp
+
+# configurações de IDEs e editores
+.vscode/
+.idea/
+*.swp
+*~
+
+# Arquivos de configuração do sistema operacional
+.DS_Store
+Thumbs.db
