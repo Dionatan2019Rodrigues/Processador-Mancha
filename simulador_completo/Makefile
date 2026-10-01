@@ -11,7 +11,13 @@ EX  = exemplos
 
 COMUM = $(SRC)/instrucao.c $(SRC)/objeto.c $(SRC)/memoria.c
 
-SIM_SRC = $(SRC)/main.c $(SRC)/cpu.c $(SRC)/dispositivos.c $(SRC)/tela.c $(COMUM)
+SIM_SRC = $(SRC)/main.c \
+          $(SRC)/cpu.c \
+          $(SRC)/dispositivos.c \
+          $(SRC)/tela.c \
+          $(SRC)/so.c \
+          $(COMUM)
+
 MONT_SRC = $(SRC)/montador.c $(COMUM)
 
 ASM_EXEMPLOS = $(wildcard $(EX)/*.asm)
