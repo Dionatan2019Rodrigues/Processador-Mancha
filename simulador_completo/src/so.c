@@ -4,9 +4,9 @@
 #include <string.h>
 
 
-/* ---------------------------------------------------------
+/* =========================================================
  * Funções internas
- * --------------------------------------------------------- */
+ * ========================================================= */
 
 static int encontra_slot_livre(const so_t *so)
 {
@@ -28,10 +28,6 @@ static uint16_t gera_pid(so_t *so)
 
     pid = so->proximo_pid;
 
-    /*
-     * PID 0 não será utilizado.
-     * O contador é monotônico nesta etapa.
-     */
     if (pid == 0) {
         pid = 1;
     }
@@ -46,9 +42,9 @@ static uint16_t gera_pid(so_t *so)
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
  * Inicialização
- * --------------------------------------------------------- */
+ * ========================================================= */
 
 void so_inicializa(so_t *so, cpu_t *cpu)
 {
@@ -68,15 +64,16 @@ void so_inicializa(so_t *so, cpu_t *cpu)
         so->processos[i].usado = 0;
         so->processos[i].pid = 0;
         so->processos[i].estado = PROC_LIVRE;
-        memset(so->processos[i].contexto,
-               0,
-               sizeof(so->processos[i].contexto));
+
+        memset(
+            so->processos[i].contexto,
+            0,
+            sizeof(so->processos[i].contexto)
+        );
     }
 
     /*
-     * O processo inicial ocupa o slot 0.
-     * Ele representa o programa que já estava executando
-     * quando o SO foi inicializado.
+     * Processo inicial.
      */
     so->processos[0].usado = 1;
     so->processos[0].pid = gera_pid(so);
@@ -84,16 +81,13 @@ void so_inicializa(so_t *so, cpu_t *cpu)
 
     so->processo_atual = 0;
 
-    /*
-     * Guarda o contexto inicial da CPU.
-     */
     so_atualiza_contexto_atual(so);
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
  * Contexto
- * --------------------------------------------------------- */
+ * ========================================================= */
 
 void so_atualiza_contexto_atual(so_t *so)
 {
@@ -139,11 +133,13 @@ void so_restaura_contexto_atual(so_t *so)
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
  * Criação de processo
- * --------------------------------------------------------- */
+ * ========================================================= */
 
-int so_cria_processo(so_t *so, const uint16_t contexto[16])
+int so_cria_processo(
+    so_t *so,
+    const uint16_t contexto[16])
 {
     int slot;
     uint16_t pid;
@@ -174,9 +170,74 @@ int so_cria_processo(so_t *so, const uint16_t contexto[16])
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
+ * Morte de processo
+ * ========================================================= */
+
+int so_mata_processo(
+    so_t *so,
+    uint16_t pid)
+{
+    int i;
+
+    if (so == NULL || pid == 0) {
+        return -1;
+    }
+
+    for (i = 0; i < SO_MAX_PROCESSOS; i++) {
+
+        if (!so->processos[i].usado) {
+            continue;
+        }
+
+        if (so->processos[i].pid != pid) {
+            continue;
+        }
+
+        /*
+         * O processo encontrado morreu.
+         */
+        so->processos[i].estado = PROC_MORTO;
+
+        /*
+         * Se era o processo atual, não existe mais
+         * processo executando.
+         */
+        if (so->processo_atual == i) {
+            so->processo_atual = -1;
+        }
+
+        /*
+         * Libera o slot para reutilização.
+         *
+         * O PID NÃO é reutilizado porque proximo_pid
+         * continua avançando.
+         */
+        so->processos[i].usado = 0;
+
+        so->processos[i].pid = 0;
+
+        memset(
+            so->processos[i].contexto,
+            0,
+            sizeof(so->processos[i].contexto)
+        );
+
+        so->processos[i].estado = PROC_LIVRE;
+
+        return 0;
+    }
+
+    /*
+     * PID não encontrado.
+     */
+    return -1;
+}
+
+
+/* =========================================================
  * Escalonador básico
- * --------------------------------------------------------- */
+ * ========================================================= */
 
 int so_primeiro_pronto(const so_t *so)
 {
@@ -206,8 +267,8 @@ int so_escalona(so_t *so)
     }
 
     /*
-     * Regra 1:
-     * se existe um processo executando, ele continua.
+     * Se o processo atual ainda está executando,
+     * ele continua.
      */
     if (so->processo_atual >= 0 &&
         so->processo_atual < SO_MAX_PROCESSOS &&
@@ -218,9 +279,7 @@ int so_escalona(so_t *so)
     }
 
     /*
-     * Regra 2:
-     * se o processo atual não pode continuar,
-     * procura o primeiro processo pronto.
+     * Procura o primeiro processo pronto.
      */
     novo = so_primeiro_pronto(so);
 
@@ -230,6 +289,7 @@ int so_escalona(so_t *so)
     }
 
     so->processo_atual = novo;
+
     so->processos[novo].estado = PROC_EXECUTANDO;
 
     so_restaura_contexto_atual(so);
@@ -238,9 +298,9 @@ int so_escalona(so_t *so)
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
  * Consultas
- * --------------------------------------------------------- */
+ * ========================================================= */
 
 uint16_t so_pid_atual(const so_t *so)
 {
@@ -275,9 +335,15 @@ estado_processo_t so_estado_processo(
 }
 
 
-const char *so_estado_nome(estado_processo_t estado)
+/* =========================================================
+ * Nome dos estados
+ * ========================================================= */
+
+const char *so_estado_nome(
+    estado_processo_t estado)
 {
     switch (estado) {
+
         case PROC_LIVRE:
             return "LIVRE";
 
@@ -299,9 +365,9 @@ const char *so_estado_nome(estado_processo_t estado)
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
  * Resumo
- * --------------------------------------------------------- */
+ * ========================================================= */
 
 void so_imprime_resumo(const so_t *so)
 {
@@ -318,11 +384,13 @@ void so_imprime_resumo(const so_t *so)
         }
     }
 
-    printf("\n============================================\n");
+    printf("\n");
+    printf("============================================\n");
     printf("PROCESSOS: %d\n", quantidade);
     printf("============================================\n");
 
     for (i = 0; i < SO_MAX_PROCESSOS; i++) {
+
         if (!so->processos[i].usado) {
             continue;
         }
@@ -338,12 +406,15 @@ void so_imprime_resumo(const so_t *so)
     }
 
     if (so->processo_atual >= 0) {
+
         printf(
             "atual: slot=%d | PID=%u\n",
             so->processo_atual,
             so_pid_atual(so)
         );
+
     } else {
+
         printf("atual: nenhum processo\n");
     }
 

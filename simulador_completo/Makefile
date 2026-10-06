@@ -59,6 +59,15 @@ teste-processos:
 		src/instrucao.c src/objeto.c src/memoria.c
 	./bin/teste-processos
 
+teste-morte:
+	gcc -Wall -Wextra -std=gnu11 -g -Isrc -o bin/teste-morte \
+		testes/test_so_morte.c \
+		src/so.c \
+		src/cpu.c \
+		src/dispositivos.c \
+		src/instrucao.c src/objeto.c src/memoria.c
+	./bin/teste-morte
+
 $(EX)/%.mob: $(EX)/%.asm $(BIN)/montador
 	$(BIN)/montador $< -o $@
 
