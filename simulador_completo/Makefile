@@ -50,6 +50,15 @@ teste-contexto: | $(BIN)
 		$(SRC)/dispositivos.c \
 		$(COMUM)
 
+teste-processos:
+	gcc -Wall -Wextra -std=gnu11 -g -Isrc -o bin/teste-processos \
+		testes/test_so_processos.c \
+		src/so.c \
+		src/cpu.c \
+		src/dispositivos.c \
+		src/instrucao.c src/objeto.c src/memoria.c
+	./bin/teste-processos
+
 $(EX)/%.mob: $(EX)/%.asm $(BIN)/montador
 	$(BIN)/montador $< -o $@
 

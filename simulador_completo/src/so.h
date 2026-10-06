@@ -1,84 +1,88 @@
-// so.h -- estrutura inicial do sistema operacional do T2.
-// Nesta etapa o SO mantem a tabela de processos, o processo init
-// e o salvamento/restauracao do contexto.
-
 #ifndef SO_H
 #define SO_H
-
-#include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 #include "cpu.h"
-
 #define SO_MAX_PROCESSOS 16
-#define SO_PID_INICIAL 1
 
 typedef enum {
-  PROC_LIVRE = 0,
-  PROC_PRONTO,
-  PROC_EXECUTANDO,
-  PROC_BLOQUEADO,
-  PROC_MORTO
+    PROC_LIVRE = 0,
+    PROC_PRONTO,
+    PROC_EXECUTANDO,
+    PROC_BLOQUEADO,
+    PROC_MORTO
 } estado_processo_t;
 
-// Contexto completo do processo:
-//
-//   reg[0..7]  = r0..r7
-//   reg[8..15] = s0..s7
-//
-// Ou seja:
-//
-//   r0 r1 r2 r3 r4 bp sp ip
-//   sr s1 s2 s3 cs cl ds dl
 typedef struct {
-  uint16_t reg[16];
-} contexto_processo_t;
+    uint8_t usado;
+    uint16_t pid;
+    estado_processo_t estado;
 
-typedef struct {
-  bool usado;
-  int pid;
-  estado_processo_t estado;
-  contexto_processo_t contexto;
+    /* Contexto completo:
+       0..7  = r0..r7
+       8..15 = s0..s7
+    */
+    uint16_t contexto[16];
 } processo_t;
 
 typedef struct {
-  processo_t tabela[SO_MAX_PROCESSOS];
+    processo_t processos[SO_MAX_PROCESSOS];
 
-  // Indice da tabela que representa o processo atualmente executando.
-  // -1 significa que nao existe processo atual.
-  int processo_atual;
+    /* Índice do processo atualmente executando.
+       -1 significa que não existe processo atual. */
+    int processo_atual;
 
-  // Proximo PID que sera utilizado.
-  int proximo_pid;
+    /* Próximo PID disponível. */
+    uint16_t proximo_pid;
 
-  // CPU controlada pelo SO.
-  cpu_t *cpu;
+    cpu_t *cpu;
 } so_t;
 
-so_t *so_cria(cpu_t *cpu);
-void so_destroi(so_t *so);
 
-// Cria o primeiro processo (init) usando o contexto atual da CPU.
-bool so_inicializa(so_t *so);
+/* Inicializa o sistema operacional. */
+void so_inicializa(so_t *so, cpu_t *cpu);
 
-// Reinicia a tabela e cria novamente o processo init.
-bool so_reinicia(so_t *so);
 
-// Salva o contexto atual da CPU no processo em execucao.
+/* Salva o contexto da CPU no processo atual. */
 void so_atualiza_contexto_atual(so_t *so);
 
-// Restaura na CPU o contexto salvo do processo atual.
-bool so_restaura_contexto_atual(so_t *so);
 
-// Consultas da tabela de processos.
-int so_quantidade_processos(const so_t *so);
-int so_processo_atual(const so_t *so);
-const processo_t *so_processo(const so_t *so, int indice);
+/* Restaura o contexto do processo atual para a CPU. */
+void so_restaura_contexto_atual(so_t *so);
 
-void so_resumo(const so_t *so,
-               char *saida,
-               size_t tam);
 
-const char *so_nome_estado(estado_processo_t estado);
+/* Cria um novo processo usando o contexto informado.
+   Retorna o PID criado ou -1 em caso de erro. */
+int so_cria_processo(so_t *so, const uint16_t contexto[16]);
+
+
+/* Executa o escalonador básico.
+   Se o processo atual puder continuar, ele continua.
+   Caso contrário, escolhe o primeiro processo pronto. */
+int so_escalona(so_t *so);
+
+
+/* Retorna o índice do primeiro processo pronto.
+   Retorna -1 se não existir nenhum. */
+int so_primeiro_pronto(const so_t *so);
+
+
+/* Retorna o PID do processo atual.
+   Retorna 0 se não houver processo atual. */
+uint16_t so_pid_atual(const so_t *so);
+
+
+/* Retorna o estado de um processo. */
+estado_processo_t so_estado_processo(
+    const so_t *so,
+    int indice
+);
+
+
+/* Imprime uma visão resumida dos processos. */
+void so_imprime_resumo(const so_t *so);
+
+
+/* Converte estado para texto. */
+const char *so_estado_nome(estado_processo_t estado);
 
 #endif
