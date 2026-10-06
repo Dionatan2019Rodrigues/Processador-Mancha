@@ -1,12 +1,13 @@
-// so.c -- primeira etapa do sistema operacional do T2.
+// so.c -- estrutura inicial do sistema operacional do T2.
 //
-// Nesta etapa implementamos somente a infraestrutura basica de processos:
+// Nesta etapa implementamos:
 //
 //   - tabela de processos
 //   - PID
 //   - processo atual
 //   - processo init
-//   - armazenamento do contexto de 16 registradores
+//   - salvamento do contexto
+//   - restauracao do contexto
 //
 // Ainda nao existe:
 //
@@ -14,7 +15,7 @@
 //   - syscall
 //   - bloqueio
 //   - preempcao
-//   - criacao de novos processos
+//   - criacao real de novos processos
 //   - destruicao de processos
 
 #include "so.h"
@@ -23,22 +24,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Copia os registradores atuais da CPU para o contexto armazenado
-// dentro da tabela de processos.
+// Copia os 16 registradores da CPU para o contexto do processo.
 static void contexto_copia_cpu(const cpu_t *cpu,
                                contexto_processo_t *ctx)
 {
-  // Registradores de usuario:
-  //
-  // r0 r1 r2 r3 r4 bp sp ip
-  for (int i = 0; i < 8; i++)
-    ctx->reg[i] = cpu_r((cpu_t *)cpu, i);
+  if (cpu == NULL || ctx == NULL)
+    return;
 
-  // Registradores de supervisor:
-  //
-  // sr s1 s2 s3 cs cl ds dl
-  for (int i = 0; i < 8; i++)
-    ctx->reg[8 + i] = cpu_s((cpu_t *)cpu, i);
+  cpu_obtem_contexto((cpu_t *)cpu, ctx->reg);
+}
+
+// Copia o contexto salvo do processo para a CPU.
+static void contexto_copia_para_cpu(cpu_t *cpu,
+                                    const contexto_processo_t *ctx)
+{
+  if (cpu == NULL || ctx == NULL)
+    return;
+
+  cpu_define_contexto(cpu, ctx->reg);
 }
 
 // Coloca uma entrada da tabela no estado inicial LIVRE.
@@ -81,50 +84,37 @@ bool so_inicializa(so_t *so)
   if (so == NULL || so->cpu == NULL)
     return false;
 
-  // Limpa a tabela inteira.
   for (int i = 0; i < SO_MAX_PROCESSOS; i++)
     processo_limpa(&so->tabela[i]);
 
   so->processo_atual = -1;
   so->proximo_pid = SO_PID_INICIAL;
 
-  // ------------------------------------------------------------
-  // Cria o processo init.
+  // O init ocupa o slot 0.
   //
-  // Ele ocupa o slot 0 da tabela, mas seu PID e independente
-  // do numero do slot.
-  // ------------------------------------------------------------
-
+  // O PID continua sendo independente do numero do slot.
   processo_t *init = &so->tabela[0];
 
   init->usado = true;
-
   init->pid = so->proximo_pid++;
-
   init->estado = PROC_EXECUTANDO;
 
-  // Guarda uma fotografia completa da CPU.
-  contexto_copia_cpu(so->cpu, &init->contexto);
+  // Guarda o contexto completo da CPU.
+  contexto_copia_cpu(so->cpu,
+                     &init->contexto);
 
-  // O slot 0 passa a representar o processo atualmente executando.
   so->processo_atual = 0;
 
   return true;
 }
 
 // Reinicializa o SO.
-//
-// No momento ainda temos apenas o init, portanto um reset simplesmente
-// limpa a tabela e cria novamente o processo inicial.
 bool so_reinicia(so_t *so)
 {
   return so_inicializa(so);
 }
 
-// Atualiza o contexto armazenado do processo atual.
-//
-// Isto sera fundamental nas proximas etapas quando o escalonador
-// precisar trocar de processo.
+// Salva o contexto atual da CPU no processo atual.
 void so_atualiza_contexto_atual(so_t *so)
 {
   if (so == NULL || so->cpu == NULL)
@@ -134,15 +124,45 @@ void so_atualiza_contexto_atual(so_t *so)
       so->processo_atual >= SO_MAX_PROCESSOS)
     return;
 
-  processo_t *p = &so->tabela[so->processo_atual];
+  processo_t *p =
+    &so->tabela[so->processo_atual];
 
   if (!p->usado)
     return;
 
-  contexto_copia_cpu(so->cpu, &p->contexto);
+  contexto_copia_cpu(so->cpu,
+                     &p->contexto);
 }
 
-// Retorna a quantidade de entradas utilizadas na tabela.
+// Restaura o contexto salvo do processo atual.
+//
+// Esta funcao sera fundamental para o escalonador:
+//
+//   1. salva processo A
+//   2. escolhe processo B
+//   3. restaura processo B
+//   4. CPU continua de onde B havia parado
+bool so_restaura_contexto_atual(so_t *so)
+{
+  if (so == NULL || so->cpu == NULL)
+    return false;
+
+  if (so->processo_atual < 0 ||
+      so->processo_atual >= SO_MAX_PROCESSOS)
+    return false;
+
+  processo_t *p =
+    &so->tabela[so->processo_atual];
+
+  if (!p->usado)
+    return false;
+
+  contexto_copia_para_cpu(so->cpu,
+                          &p->contexto);
+
+  return true;
+}
+
 int so_quantidade_processos(const so_t *so)
 {
   if (so == NULL)
@@ -158,7 +178,6 @@ int so_quantidade_processos(const so_t *so)
   return quantidade;
 }
 
-// Retorna o indice do processo atual.
 int so_processo_atual(const so_t *so)
 {
   if (so == NULL)
@@ -167,19 +186,19 @@ int so_processo_atual(const so_t *so)
   return so->processo_atual;
 }
 
-// Retorna uma entrada da tabela.
-const processo_t *so_processo(const so_t *so, int indice)
+const processo_t *so_processo(const so_t *so,
+                              int indice)
 {
   if (so == NULL)
     return NULL;
 
-  if (indice < 0 || indice >= SO_MAX_PROCESSOS)
+  if (indice < 0 ||
+      indice >= SO_MAX_PROCESSOS)
     return NULL;
 
   return &so->tabela[indice];
 }
 
-// Converte estado numerico para texto.
 const char *so_nome_estado(estado_processo_t estado)
 {
   switch (estado) {
@@ -203,26 +222,25 @@ const char *so_nome_estado(estado_processo_t estado)
   }
 }
 
-// Produz uma descricao resumida do estado atual do SO.
-//
-// Exemplo:
-//
-// processos=1 | atual: slot=0 PID=1 estado=EXECUTANDO |
-// IP=0080 SP=03D0 SR=B000
-void so_resumo(const so_t *so, char *saida, size_t tam)
+void so_resumo(const so_t *so,
+               char *saida,
+               size_t tam)
 {
   if (saida == NULL || tam == 0)
     return;
 
   if (so == NULL) {
-    snprintf(saida, tam, "SO inexistente");
+    snprintf(saida,
+             tam,
+             "SO inexistente");
     return;
   }
 
   if (so->processo_atual < 0 ||
       so->processo_atual >= SO_MAX_PROCESSOS) {
 
-    snprintf(saida, tam,
+    snprintf(saida,
+             tam,
              "processos=%d | nenhum processo atual",
              so_quantidade_processos(so));
 
@@ -230,19 +248,19 @@ void so_resumo(const so_t *so, char *saida, size_t tam)
   }
 
   const processo_t *p =
-      &so->tabela[so->processo_atual];
+    &so->tabela[so->processo_atual];
 
   snprintf(
-      saida,
-      tam,
-      "processos=%d | atual: slot=%d PID=%d estado=%s | "
-      "IP=%04X SP=%04X SR=%04X",
-      so_quantidade_processos(so),
-      so->processo_atual,
-      p->pid,
-      so_nome_estado(p->estado),
-      p->contexto.reg[7],
-      p->contexto.reg[6],
-      p->contexto.reg[8]
+    saida,
+    tam,
+    "processos=%d | atual: slot=%d PID=%d estado=%s | "
+    "IP=%04X SP=%04X SR=%04X",
+    so_quantidade_processos(so),
+    so->processo_atual,
+    p->pid,
+    so_nome_estado(p->estado),
+    p->contexto.reg[7],
+    p->contexto.reg[6],
+    p->contexto.reg[8]
   );
 }

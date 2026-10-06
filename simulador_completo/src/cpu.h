@@ -41,11 +41,28 @@ void cpu_executa_1(cpu_t *cpu);
 
 bool cpu_parada(cpu_t *cpu);
 long cpu_num_instrucoes(cpu_t *cpu);
-const char *cpu_ultimo_evento(cpu_t *cpu); // descrição da última interrupção/falta, ou ""
+const char *cpu_ultimo_evento(cpu_t *cpu);
 
-uint16_t cpu_r(cpu_t *cpu, int indice);      // 0..7 (r0..r4,bp,sp,ip)
-uint16_t cpu_s(cpu_t *cpu, int indice);      // 0..7 (sr,s1..s3,cs,cl,ds,dl)
+uint16_t cpu_r(cpu_t *cpu, int indice);
+uint16_t cpu_s(cpu_t *cpu, int indice);
 uint16_t cpu_sr(cpu_t *cpu);
+
+// ---------------------------------------------------------------
+// Contexto completo da CPU
+//
+// A ordem utilizada pelo SO e:
+//   r0 r1 r2 r3 r4 bp sp ip sr s1 s2 s3 cs cl ds dl
+//
+// Ou seja:
+//   contexto[0..7]  = r0..r7
+//   contexto[8..15] = s0..s7
+// ---------------------------------------------------------------
+
+// Copia o contexto completo da CPU para um vetor de 16 palavras.
+void cpu_obtem_contexto(cpu_t *cpu, uint16_t contexto[16]);
+
+// Carrega um contexto de 16 palavras para a CPU.
+void cpu_define_contexto(cpu_t *cpu, const uint16_t contexto[16]);
 
 bool cpu_bit(cpu_t *cpu, uint16_t mascara);
 bool cpu_modo_supervisor(cpu_t *cpu);

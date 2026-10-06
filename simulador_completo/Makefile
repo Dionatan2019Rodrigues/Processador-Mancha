@@ -23,7 +23,7 @@ MONT_SRC = $(SRC)/montador.c $(COMUM)
 ASM_EXEMPLOS = $(wildcard $(EX)/*.asm)
 MOB_EXEMPLOS = $(ASM_EXEMPLOS:.asm=.mob)
 
-.PHONY: all simulador montador exemplos clean
+.PHONY: all simulador montador exemplos teste-contexto clean
 
 all: simulador montador exemplos
 
@@ -41,6 +41,14 @@ $(BIN)/montador: $(MONT_SRC) $(wildcard $(SRC)/*.h) | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $(MONT_SRC)
 
 exemplos: $(BIN)/montador $(MOB_EXEMPLOS)
+
+teste-contexto: | $(BIN)
+	$(CC) $(CFLAGS) -o $(BIN)/teste-contexto \
+		testes/test_so_contexto.c \
+		$(SRC)/so.c \
+		$(SRC)/cpu.c \
+		$(SRC)/dispositivos.c \
+		$(COMUM)
 
 $(EX)/%.mob: $(EX)/%.asm $(BIN)/montador
 	$(BIN)/montador $< -o $@

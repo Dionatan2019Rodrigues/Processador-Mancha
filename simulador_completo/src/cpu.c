@@ -30,6 +30,25 @@ bool cpu_paginacao_ativa(cpu_t *cpu) { return cpu_bit(cpu, SR_P); }
 uint16_t cpu_r(cpu_t *cpu, int i) { return cpu->r[i & 7]; }
 uint16_t cpu_s(cpu_t *cpu, int i) { return cpu->s[i & 7]; }
 uint16_t cpu_sr(cpu_t *cpu) { return cpu->s[0]; }
+
+void cpu_obtem_contexto(cpu_t *cpu, uint16_t contexto[16])
+{
+  if (cpu == NULL || contexto == NULL)
+    return;
+
+  memcpy(&contexto[0], cpu->r, sizeof(cpu->r));
+  memcpy(&contexto[8], cpu->s, sizeof(cpu->s));
+}
+
+void cpu_define_contexto(cpu_t *cpu, const uint16_t contexto[16])
+{
+  if (cpu == NULL || contexto == NULL)
+    return;
+
+  memcpy(cpu->r, &contexto[0], sizeof(cpu->r));
+  memcpy(cpu->s, &contexto[8], sizeof(cpu->s));
+}
+
 bool cpu_parada(cpu_t *cpu) { return cpu->parada; }
 long cpu_num_instrucoes(cpu_t *cpu) { return cpu->n_instrucoes; }
 const char *cpu_ultimo_evento(cpu_t *cpu) { return cpu->ultimo_evento; }

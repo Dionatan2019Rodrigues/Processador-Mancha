@@ -470,6 +470,25 @@ int main(int argc, char *argv[])
             }
 
             // --------------------------------------------------
+            // ETAPA 2
+            //
+            // V restaura o contexto salvo do processo atual.
+            // --------------------------------------------------
+            case 'V': case 'v': {
+              if (so_restaura_contexto_atual(so)) {
+                snprintf(mensagem, sizeof(mensagem),
+                        "contexto restaurado: IP=%04X SP=%04X SR=%04X",
+                        cpu_r(cpu, 7),
+                        cpu_r(cpu, 6),
+                        cpu_sr(cpu));
+              } else {
+                snprintf(mensagem, sizeof(mensagem),
+                        "nao foi possivel restaurar o contexto");
+              }
+              break;
+            }
+
+            // --------------------------------------------------
             // Finaliza.
             // --------------------------------------------------
 
