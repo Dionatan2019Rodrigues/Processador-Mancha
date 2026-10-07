@@ -42,6 +42,7 @@ void cpu_executa_1(cpu_t *cpu);
 bool cpu_parada(cpu_t *cpu);
 long cpu_num_instrucoes(cpu_t *cpu);
 const char *cpu_ultimo_evento(cpu_t *cpu);
+int cpu_ultima_interrupcao(cpu_t *cpu);
 
 uint16_t cpu_r(cpu_t *cpu, int indice);
 uint16_t cpu_s(cpu_t *cpu, int indice);

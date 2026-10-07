@@ -12,6 +12,7 @@ struct cpu {
   mem_t *mem;
   disp_t *disp;
   char ultimo_evento[64];
+  int ultima_interrupcao;
 };
 
 cpu_t *cpu_cria(mem_t *mem, disp_t *disp)
@@ -19,6 +20,7 @@ cpu_t *cpu_cria(mem_t *mem, disp_t *disp)
   cpu_t *cpu = calloc(1, sizeof(cpu_t));
   cpu->mem = mem;
   cpu->disp = disp;
+  cpu->ultima_interrupcao = -1;
   return cpu;
 }
 
@@ -52,6 +54,7 @@ void cpu_define_contexto(cpu_t *cpu, const uint16_t contexto[16])
 bool cpu_parada(cpu_t *cpu) { return cpu->parada; }
 long cpu_num_instrucoes(cpu_t *cpu) { return cpu->n_instrucoes; }
 const char *cpu_ultimo_evento(cpu_t *cpu) { return cpu->ultimo_evento; }
+int cpu_ultima_interrupcao(cpu_t *cpu) { return cpu ? cpu->ultima_interrupcao : -1; }
 
 // -------------------------------------------------------------- tradução
 
@@ -349,6 +352,7 @@ static const char *nome_interrupcao(int n)
 static void cpu_interrompe(cpu_t *cpu, int numero)
 {
   numero &= 0xF;
+  cpu->ultima_interrupcao = numero;
   uint32_t end_frame = (uint32_t)numero * 8;
   uint16_t novo_ip = mem_le_palavra(cpu->mem, end_frame + 0);
   uint16_t novo_sp = mem_le_palavra(cpu->mem, end_frame + 2);
@@ -582,6 +586,7 @@ void cpu_reinicia(cpu_t *cpu)
   cpu->parada = false;
   cpu->n_instrucoes = 0;
   cpu->ultimo_evento[0] = '\0';
+  cpu->ultima_interrupcao = -1;
   cpu_liga(cpu);
 }
 

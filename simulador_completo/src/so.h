@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "cpu.h"
+#include "syscall.h"
 
 #define SO_MAX_PROCESSOS 16
 
@@ -34,30 +35,55 @@ typedef struct {
 } so_t;
 
 
-/* Inicialização */
-void so_inicializa(so_t *so, cpu_t *cpu);
+/* =========================================================
+ * Criação e destruição do SO
+ * ========================================================= */
+
+so_t *so_cria(cpu_t *cpu);
+
+void so_destroi(so_t *so);
 
 
-/* Contexto */
+/* =========================================================
+ * Inicialização
+ * ========================================================= */
+
+void so_inicializa(so_t *so);
+
+
+/* =========================================================
+ * Contexto
+ * ========================================================= */
+
 void so_atualiza_contexto_atual(so_t *so);
+
 void so_restaura_contexto_atual(so_t *so);
 
 
-/* Criação */
+/* =========================================================
+ * Criação de processo
+ * ========================================================= */
+
 int so_cria_processo(
     so_t *so,
     const uint16_t contexto[16]
 );
 
 
-/* Morte */
+/* =========================================================
+ * Morte de processo
+ * ========================================================= */
+
 int so_mata_processo(
     so_t *so,
     uint16_t pid
 );
 
 
-/* Escalonamento */
+/* =========================================================
+ * Escalonamento
+ * ========================================================= */
+
 int so_escalona(so_t *so);
 
 int so_primeiro_pronto(
@@ -65,7 +91,27 @@ int so_primeiro_pronto(
 );
 
 
-/* Consultas */
+/* =========================================================
+ * Syscalls
+ * ========================================================= */
+
+/*
+ * Trata uma chamada de sistema disparada por trap 7.
+ *
+ * O contexto do processo atual deve estar salvo na tabela
+ * de processos antes da execução do trap.
+ */
+int so_trata_syscall(so_t *so);
+
+
+/* Inicializa e registra as syscalls do SO. */
+void so_inicializa_syscalls(so_t *so);
+
+
+/* =========================================================
+ * Consultas
+ * ========================================================= */
+
 uint16_t so_pid_atual(
     const so_t *so
 );
@@ -76,10 +122,11 @@ estado_processo_t so_estado_processo(
 );
 
 
-/* Informações */
-void so_imprime_resumo(
-    const so_t *so
-);
+/* =========================================================
+ * Informações
+ * ========================================================= */
+
+void so_imprime_resumo(const so_t *so);
 
 const char *so_estado_nome(
     estado_processo_t estado

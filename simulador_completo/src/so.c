@@ -1,6 +1,7 @@
 #include "so.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 
@@ -13,6 +14,7 @@ static int encontra_slot_livre(const so_t *so)
     int i;
 
     for (i = 0; i < SO_MAX_PROCESSOS; i++) {
+
         if (!so->processos[i].usado) {
             return i;
         }
@@ -43,16 +45,47 @@ static uint16_t gera_pid(so_t *so)
 
 
 /* =========================================================
+ * Criação e destruição
+ * ========================================================= */
+
+so_t *so_cria(cpu_t *cpu)
+{
+    so_t *so;
+
+    so = calloc(1, sizeof(so_t));
+
+    if (so == NULL) {
+        return NULL;
+    }
+
+    so->cpu = cpu;
+
+    return so;
+}
+
+
+void so_destroi(so_t *so)
+{
+    free(so);
+}
+
+
+/* =========================================================
  * Inicialização
  * ========================================================= */
 
-void so_inicializa(so_t *so, cpu_t *cpu)
+void so_inicializa(so_t *so)
 {
     int i;
 
     if (so == NULL) {
         return;
     }
+
+    /*
+     * Mantém a CPU associada ao SO.
+     */
+    cpu_t *cpu = so->cpu;
 
     memset(so, 0, sizeof(*so));
 
@@ -61,6 +94,7 @@ void so_inicializa(so_t *so, cpu_t *cpu)
     so->proximo_pid = 1;
 
     for (i = 0; i < SO_MAX_PROCESSOS; i++) {
+
         so->processos[i].usado = 0;
         so->processos[i].pid = 0;
         so->processos[i].estado = PROC_LIVRE;
@@ -82,6 +116,11 @@ void so_inicializa(so_t *so, cpu_t *cpu)
     so->processo_atual = 0;
 
     so_atualiza_contexto_atual(so);
+
+    /*
+     * Inicializa a infraestrutura das syscalls.
+     */
+    so_inicializa_syscalls(so);
 }
 
 
@@ -97,6 +136,7 @@ void so_atualiza_contexto_atual(so_t *so)
 
     if (so->processo_atual < 0 ||
         so->processo_atual >= SO_MAX_PROCESSOS) {
+
         return;
     }
 
@@ -119,6 +159,7 @@ void so_restaura_contexto_atual(so_t *so)
 
     if (so->processo_atual < 0 ||
         so->processo_atual >= SO_MAX_PROCESSOS) {
+
         return;
     }
 
@@ -130,6 +171,238 @@ void so_restaura_contexto_atual(so_t *so)
         so->cpu,
         so->processos[so->processo_atual].contexto
     );
+}
+
+
+/* =========================================================
+ * Syscall SO_LE
+ * ========================================================= */
+
+static int16_t syscall_so_le(
+    uint16_t arg1,
+    uint16_t arg2,
+    uint16_t arg3,
+    uint16_t arg4)
+{
+    /*
+     * A leitura real da console será implementada
+     * posteriormente, junto com bloqueio de processos.
+     *
+     * Neste momento a infraestrutura já está integrada.
+     */
+
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+
+    return -1;
+}
+
+
+/* =========================================================
+ * Syscall SO_ESCREVE
+ * ========================================================= */
+
+static int16_t syscall_so_escreve(
+    uint16_t arg1,
+    uint16_t arg2,
+    uint16_t arg3,
+    uint16_t arg4)
+{
+    /*
+     * A implementação real da saída será integrada
+     * posteriormente.
+     *
+     * Por enquanto retornamos o primeiro argumento.
+     * Isso permite testar a passagem de argumentos
+     * através do trap 7.
+     */
+
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+
+    return (int16_t)arg1;
+}
+
+
+/* =========================================================
+ * Syscall SO_CRIA_PROC
+ * ========================================================= */
+
+static int16_t syscall_so_cria_proc(
+    uint16_t arg1,
+    uint16_t arg2,
+    uint16_t arg3,
+    uint16_t arg4)
+{
+    /*
+     * A criação real através da syscall será ligada
+     * posteriormente ao contexto completo do processo.
+     */
+
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+
+    return -1;
+}
+
+
+/* =========================================================
+ * Syscall SO_MATA_PROC
+ * ========================================================= */
+
+static int16_t syscall_so_mata_proc(
+    uint16_t arg1,
+    uint16_t arg2,
+    uint16_t arg3,
+    uint16_t arg4)
+{
+    /*
+     * A implementação completa será ligada posteriormente.
+     */
+
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+
+    return -1;
+}
+
+
+/* =========================================================
+ * Syscall SO_ESPERA_PROC
+ * ========================================================= */
+
+static int16_t syscall_so_espera_proc(
+    uint16_t arg1,
+    uint16_t arg2,
+    uint16_t arg3,
+    uint16_t arg4)
+{
+    /*
+     * O bloqueio e a espera pela morte de outro processo
+     * serão implementados em uma etapa posterior.
+     */
+
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+
+    return -1;
+}
+
+
+/* =========================================================
+ * Registro das syscalls
+ * ========================================================= */
+
+void so_inicializa_syscalls(so_t *so)
+{
+    (void)so;
+
+    syscall_inicializa();
+
+    syscall_registra(
+        SO_LE,
+        syscall_so_le
+    );
+
+    syscall_registra(
+        SO_ESCREVE,
+        syscall_so_escreve
+    );
+
+    syscall_registra(
+        SO_CRIA_PROC,
+        syscall_so_cria_proc
+    );
+
+    syscall_registra(
+        SO_MATA_PROC,
+        syscall_so_mata_proc
+    );
+
+    syscall_registra(
+        SO_ESPERA_PROC,
+        syscall_so_espera_proc
+    );
+}
+
+
+/* =========================================================
+ * Atendimento de trap 7
+ * ========================================================= */
+
+int so_trata_syscall(so_t *so)
+{
+    processo_t *processo;
+    uint16_t numero;
+    uint16_t arg1;
+    uint16_t arg2;
+    uint16_t arg3;
+    uint16_t arg4;
+    int16_t retorno;
+
+    if (so == NULL) {
+        return -1;
+    }
+
+    if (so->processo_atual < 0 ||
+        so->processo_atual >= SO_MAX_PROCESSOS) {
+
+        return -1;
+    }
+
+    processo = &so->processos[so->processo_atual];
+
+    if (!processo->usado) {
+        return -1;
+    }
+
+    /*
+     * O contexto salvo contém:
+     *
+     * contexto[0] = r0
+     * contexto[1] = r1
+     * contexto[2] = r2
+     * contexto[3] = r3
+     * contexto[4] = r4
+     */
+
+    numero = processo->contexto[0];
+    arg1   = processo->contexto[1];
+    arg2   = processo->contexto[2];
+    arg3   = processo->contexto[3];
+    arg4   = processo->contexto[4];
+
+    retorno = syscall_executa(
+        numero,
+        arg1,
+        arg2,
+        arg3,
+        arg4
+    );
+
+    /*
+     * Convenção da T2:
+     *
+     * retorno da syscall -> r0
+     */
+    processo->contexto[0] = (uint16_t)retorno;
+
+    /*
+     * O processo continua executando a partir do
+     * endereço salvo antes do trap.
+     */
+    so_restaura_contexto_atual(so);
+
+    return 0;
 }
 
 
@@ -194,27 +467,13 @@ int so_mata_processo(
             continue;
         }
 
-        /*
-         * O processo encontrado morreu.
-         */
         so->processos[i].estado = PROC_MORTO;
 
-        /*
-         * Se era o processo atual, não existe mais
-         * processo executando.
-         */
         if (so->processo_atual == i) {
             so->processo_atual = -1;
         }
 
-        /*
-         * Libera o slot para reutilização.
-         *
-         * O PID NÃO é reutilizado porque proximo_pid
-         * continua avançando.
-         */
         so->processos[i].usado = 0;
-
         so->processos[i].pid = 0;
 
         memset(
@@ -228,9 +487,6 @@ int so_mata_processo(
         return 0;
     }
 
-    /*
-     * PID não encontrado.
-     */
     return -1;
 }
 
@@ -248,8 +504,10 @@ int so_primeiro_pronto(const so_t *so)
     }
 
     for (i = 0; i < SO_MAX_PROCESSOS; i++) {
+
         if (so->processos[i].usado &&
             so->processos[i].estado == PROC_PRONTO) {
+
             return i;
         }
     }
@@ -266,10 +524,6 @@ int so_escalona(so_t *so)
         return -1;
     }
 
-    /*
-     * Se o processo atual ainda está executando,
-     * ele continua.
-     */
     if (so->processo_atual >= 0 &&
         so->processo_atual < SO_MAX_PROCESSOS &&
         so->processos[so->processo_atual].usado &&
@@ -278,13 +532,12 @@ int so_escalona(so_t *so)
         return so->processo_atual;
     }
 
-    /*
-     * Procura o primeiro processo pronto.
-     */
     novo = so_primeiro_pronto(so);
 
     if (novo < 0) {
+
         so->processo_atual = -1;
+
         return -1;
     }
 
@@ -310,6 +563,7 @@ uint16_t so_pid_atual(const so_t *so)
 
     if (so->processo_atual < 0 ||
         so->processo_atual >= SO_MAX_PROCESSOS) {
+
         return 0;
     }
 
@@ -328,6 +582,7 @@ estado_processo_t so_estado_processo(
     if (so == NULL ||
         indice < 0 ||
         indice >= SO_MAX_PROCESSOS) {
+
         return PROC_LIVRE;
     }
 
@@ -379,6 +634,7 @@ void so_imprime_resumo(const so_t *so)
     }
 
     for (i = 0; i < SO_MAX_PROCESSOS; i++) {
+
         if (so->processos[i].usado) {
             quantidade++;
         }

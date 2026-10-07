@@ -16,6 +16,7 @@ SIM_SRC = $(SRC)/main.c \
           $(SRC)/dispositivos.c \
           $(SRC)/tela.c \
           $(SRC)/so.c \
+		  $(SRC)/syscall.c \
           $(COMUM)
 
 MONT_SRC = $(SRC)/montador.c $(COMUM)
@@ -23,7 +24,7 @@ MONT_SRC = $(SRC)/montador.c $(COMUM)
 ASM_EXEMPLOS = $(wildcard $(EX)/*.asm)
 MOB_EXEMPLOS = $(ASM_EXEMPLOS:.asm=.mob)
 
-.PHONY: all simulador montador exemplos teste-contexto clean
+.PHONY: all simulador montador exemplos teste-contexto teste-trap7 clean
 
 all: simulador montador exemplos
 
@@ -67,6 +68,28 @@ teste-morte:
 		src/dispositivos.c \
 		src/instrucao.c src/objeto.c src/memoria.c
 	./bin/teste-morte
+
+teste-trap7: | $(BIN)
+	$(CC) $(CFLAGS) -o $(BIN)/teste-trap7 \
+		testes/test_cpu_trap7.c \
+		$(SRC)/cpu.c \
+		$(SRC)/dispositivos.c \
+		$(SRC)/instrucao.c \
+		$(SRC)/objeto.c \
+		$(SRC)/memoria.c
+	./$(BIN)/teste-trap7
+
+teste-syscall-trap7:
+	gcc -Wall -Wextra -std=gnu11 -g -Isrc -o bin/teste-syscall-trap7 \
+		testes/test_syscall_trap7.c \
+		src/cpu.c \
+		src/dispositivos.c \
+		src/instrucao.c \
+		src/objeto.c \
+		src/memoria.c \
+		src/so.c \
+		src/syscall.c
+	./bin/teste-syscall-trap7
 
 $(EX)/%.mob: $(EX)/%.asm $(BIN)/montador
 	$(BIN)/montador $< -o $@
